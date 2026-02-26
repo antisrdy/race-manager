@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+{% block title %}Check-in — Race Manager{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="race-header d-flex align-items-center gap-3 flex-wrap mb-4">
+  <div class="flex-grow-1">
+    <h2 class="mb-0 fw-bold"><i class="bi bi-check2-square text-primary me-2"></i>Check-in</h2>
+    <div class="text-muted small">Mark runners as present for all races</div>
+  </div>
+  <button class="btn btn-primary fw-semibold" id="globalCheckinAllBtn">
+    <i class="bi bi-check2-all me-2"></i>Check In Everyone
+  </button>
+</div>
+
+<!-- Global progress -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <span class="fw-semibold">Overall Progress</span>
+      <span class="text-muted small">
+        <span id="globalChecked">{{ total_checked }}</span>
+        / <span id="globalTotal">{{ total_runners }}</span> runners checked in
+      </span>
+    </div>
+    <div class="progress">
+      <div class="progress-bar bg-primary" id="globalProgressBar"
+           style="width: {{ (total_checked / total_runners * 100) if total_runners else 0 }}%"
+           role="progressbar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="mb-4">
+  <div class="input-group">
+    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+    <input type="search" class="form-control" id="runnerSearch"
+           placeholder="Search by name or bib number…" autocomplete="off">
+  </div>
+</div>
+
+<!-- Per-race groups -->
+{% if groups %}
+  {% for group in groups %}
+  <div class="card mb-4" id="group-card-{{ group.race.id }}">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div>
+        <span class="fw-bold fs-5">{{ group.race.name }}</span>
+        {% if group.race.start_time %}
+        <span class="text-muted ms-2 small" data-start="{{ group.race.start_time }}">
+          <i class="bi bi-clock me-1"></i>{{ group.race.start_time[11:16] }}
+          <span class="elapsed-counter"></span>
+        </span>
+        {% else %}
+        <span class="badge bg-warning text-dark ms-2 small">No start time</span>
+        {% endif %}
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small">
+          <span id="raceChecked-{{ group.race.id }}">{{ group.checked }}</span>
+          / <span id="raceTotal-{{ group.race.id }}">{{ group.total }}</span>
+        </span>
+        <button class="btn btn-outline-primary btn-sm fw-semibold checkin-all-race-btn"
+                data-race-id="{{ group.race.id }}">
+          <i class="bi bi-check2-all me-1"></i>Check In All
+        </button>
+      </div>
+    </div>
+
+    <!-- Race progress bar -->
+    <div class="px-4 pt-3 pb-1">
+      <div class="progress" style="height:6px">
+        <div class="progress-bar bg-primary" id="raceBar-{{ group.race.id }}"
+             style="width: {{ (group.checked / group.total * 100) if group.total else 0 }}%"
+             role="progressbar"></div>
+      </div>
+    </div>
+
+    {% if group.runners %}
+    <div style="max-height:400px; overflow-y:auto">
+      <table class="table table-hover mb-0 table-sticky">
+        <thead>
+          <tr>
+            <th>Bib</th><th>Name</th><th>Age</th><th>Gender</th>
+            <th>Status</th><th class="text-center">Present</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in group.runners %}
+          <tr id="runner-row-{{ r.id }}" data-name="{{ r.name }}" data-bib="{{ r.bib_number }}">
+            <td class="bib">{{ r.bib_number }}</td>
+            <td>{{ r.name }}</td>
+            <td>{{ r.age if r.age else '—' }}</td>
+            <td>{{ r.gender if r.gender else '—' }}</td>
+            <td>
+              {% if r.finish_time %}
+                <span class="badge badge-finished"><i class="bi bi-check-circle me-1"></i>Finished</span>
+              {% elif r.checked_in %}
+                <span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Checked In</span>
+              {% else %}
+                <span class="badge badge-absent">Absent</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <div class="form-check form-switch d-flex justify-content-center m-0">
+                <input class="form-check-input checkin-toggle" type="checkbox" role="switch"
+                       data-runner-id="{{ r.id }}" data-race-id="{{ group.race.id }}"
+                       {{ 'checked' if r.checked_in else '' }}
+                       style="width:2.5em; height:1.25em; cursor:pointer">
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body text-center py-4 text-muted">
+      <i class="bi bi-people" style="font-size:2rem;opacity:.2"></i>
+      <p class="mt-2 small mb-0">No runners in this race yet.</p>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-people" style="font-size:3rem;opacity:.2"></i>
+    <p class="mt-3 fw-semibold">No races or runners yet</p>
+    <p class="small mb-3">Import a CSV or Excel file from the <a href="/">home page</a> to get started.</p>
+  </div>
+</div>
+{% endif %}
+
+<div id="searchNoResults" style="display:none">
+  <div class="card">
+    <div class="card-body text-center py-4 text-muted">
+      <i class="bi bi-search" style="font-size:2rem;opacity:.2"></i>
+      <p class="mt-2 small mb-0">No runners match your search.</p>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+function updateGlobalBar(checked, total) {
+  document.getElementById('globalChecked').textContent = checked;
+  document.getElementById('globalTotal').textContent   = total;
+  const pct = total ? (checked / total * 100) : 0;
+  document.getElementById('globalProgressBar').style.width = pct + '%';
+}
+
+function updateRaceBar(raceId, checked, total) {
+  const el = document.getElementById('raceChecked-' + raceId);
+  if (el) el.textContent = checked;
+  const bar = document.getElementById('raceBar-' + raceId);
+  if (bar) bar.style.width = (total ? (checked / total * 100) : 0) + '%';
+}
+
+// Individual toggle
+document.querySelectorAll('.checkin-toggle').forEach(toggle => {
+  toggle.addEventListener('change', async function () {
+    const runnerId  = this.dataset.runnerId;
+    const raceId    = this.dataset.raceId;
+    const checkedIn = this.checked ? 1 : 0;
+    const row       = document.getElementById('runner-row-' + runnerId);
+
+    try {
+      const res  = await fetch(`/races/${raceId}/runners/${runnerId}/checkin`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ checked_in: checkedIn }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        // Update status badge in the row
+        const statusCell = row?.querySelectorAll('td')[4];
+        if (statusCell) {
+          if (checkedIn) {
+            statusCell.innerHTML = '<span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Checked In</span>';
+          } else {
+            statusCell.innerHTML = '<span class="badge badge-absent">Absent</span>';
+          }
+        }
+        updateRaceBar(raceId, data.race_checked, data.race_total);
+        updateGlobalBar(data.global_checked, data.global_total);
+      }
+    } catch {
+      this.checked = !this.checked; // revert on error
+    }
+  });
+});
+
+// Check In All — per race
+document.querySelectorAll('.checkin-all-race-btn').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const raceId = this.dataset.raceId;
+    this.disabled = true;
+    try {
+      const res  = await fetch(`/races/${raceId}/runners/checkin-all`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        // Toggle all checkboxes in this race
+        document.querySelectorAll(`.checkin-toggle[data-race-id="${raceId}"]`).forEach(t => {
+          t.checked = true;
+        });
+        // Update all status badges in this race's table
+        document.querySelectorAll(`[data-race-id="${raceId}"]`).forEach(t => {
+          const row = document.getElementById('runner-row-' + t.dataset.runnerId);
+          if (row) {
+            const statusCell = row.querySelectorAll('td')[4];
+            if (statusCell && !statusCell.querySelector('.badge-finished')) {
+              statusCell.innerHTML = '<span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Checked In</span>';
+            }
+          }
+        });
+        updateRaceBar(raceId, data.race_checked, data.race_total);
+        updateGlobalBar(data.global_checked, data.global_total);
+      }
+    } finally {
+      this.disabled = false;
+    }
+  });
+});
+
+// Live search — filter rows by name or bib across all race groups
+function normalise(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+document.getElementById('runnerSearch').addEventListener('input', function () {
+  const q = normalise(this.value.trim());
+
+  document.querySelectorAll('.card[id^="group-card-"]').forEach(card => {
+    const rows = card.querySelectorAll('tr[data-name]');
+
+    if (!rows.length) {
+      // Card has no runners — hide it while a query is active
+      card.style.display = q ? 'none' : '';
+      return;
+    }
+
+    let visible = 0;
+    rows.forEach(row => {
+      const match = !q
+        || normalise(row.dataset.name).includes(q)
+        || row.dataset.bib.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    card.style.display = (visible > 0 || !q) ? '' : 'none';
+  });
+
+  const anyVisible = [...document.querySelectorAll('.card[id^="group-card-"]')]
+    .some(c => c.style.display !== 'none');
+  document.getElementById('searchNoResults').style.display =
+    (q && !anyVisible) ? '' : 'none';
+});
+
+// Check In Everyone — global
+document.getElementById('globalCheckinAllBtn').addEventListener('click', async function () {
+  this.disabled = true;
+  try {
+    const res  = await fetch('/checkin/all', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      document.querySelectorAll('.checkin-toggle').forEach(t => { t.checked = true; });
+      document.querySelectorAll('[id^="raceBar-"]').forEach(bar => {
+        bar.style.width = '100%';
+      });
+      document.querySelectorAll('[id^="raceChecked-"]').forEach(el => {
+        const raceId = el.id.replace('raceChecked-', '');
+        const total  = document.getElementById('raceTotal-' + raceId);
+        if (total) el.textContent = total.textContent;
+      });
+      // Update all status badges that aren't "Finished"
+      document.querySelectorAll('.checkin-toggle').forEach(t => {
+        const row = document.getElementById('runner-row-' + t.dataset.runnerId);
+        if (row) {
+          const statusCell = row.querySelectorAll('td')[4];
+          if (statusCell && !statusCell.querySelector('.badge-finished')) {
+            statusCell.innerHTML = '<span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Checked In</span>';
+          }
+        }
+      });
+      updateGlobalBar(data.global_checked, data.global_total);
+    }
+  } finally {
+    this.disabled = false;
+  }
+});
+</script>
+{% endblock %}

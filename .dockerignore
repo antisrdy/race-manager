@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+README.md
+*.csv
+Makefile
+.github/

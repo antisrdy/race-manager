@@ -1,0 +1,22 @@
+bib_number,name,age,gender,race
+101,Alice Moreau,34,F,10km
+102,Benoît Dupuis,28,M,10km
+103,Clara Fontaine,41,F,10km
+104,David Renard,25,M,10km
+105,Émilie Girard,37,F,10km
+106,Fabien Leclerc,52,M,10km
+107,Gisèle Martin,30,F,10km
+108,Hugo Perrin,23,M,10km
+201,Isabelle Aubert,38,F,21km
+202,Julien Blanc,31,M,21km
+203,Karine Bouchard,45,F,21km
+204,Laurent Chevalier,27,M,21km
+205,Marie Delacroix,33,F,21km
+206,Nicolas Faure,29,M,21km
+207,Odile Germain,48,F,21km
+301,Paul Hugues,44,M,42km
+302,Quentin Imbert,36,M,42km
+303,Rachel Jourdain,40,F,42km
+304,Stéphane Klein,55,M,42km
+305,Thierry Lambert,38,M,42km
+306,Virginie Moulin,32,F,42km

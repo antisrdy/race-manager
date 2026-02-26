@@ -1,0 +1,463 @@
+{% extends 'base.html' %}
+{% block title %}Finish Line — Race Manager{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="race-header d-flex align-items-center gap-3 flex-wrap mb-4">
+  <div class="flex-grow-1">
+    <h2 class="mb-0 fw-bold"><i class="bi bi-flag-fill text-primary me-2"></i>Finish Line</h2>
+    <div class="text-muted small">Log finishes — bib number is automatically linked to its race</div>
+  </div>
+</div>
+
+<!-- Race stat cards -->
+{% if races %}
+<div class="row g-3 mb-4">
+  {% for race in races %}
+  <div class="col-md-4 col-sm-6">
+    <div class="card border-0 h-100 race-stat-card" id="race-card-{{ race.id }}">
+      <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <div class="fw-bold">{{ race.name }}</div>
+          <small class="text-muted text-end">
+            {% if race.start_time %}
+            <span data-start="{{ race.start_time }}">
+              {{ race.start_time[11:16] }}<br>
+              <span class="elapsed-counter" style="font-size:.8em; white-space:nowrap"></span>
+            </span>
+            {% else %}<span class="badge bg-warning text-dark">No time</span>{% endif %}
+          </small>
+        </div>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="text-success fw-bold" id="rc-finished-{{ race.id }}">{{ race.finished }}</span>
+          <span class="text-muted small">/ {{ race.total }} finished</span>
+          <span class="ms-auto d-flex align-items-center gap-1">
+            <span class="pulse-dot {% if race.still_running > 0 %}active{% endif %}"
+                  id="rc-dot-{{ race.id }}"></span>
+            <span class="fw-semibold small {% if race.still_running > 0 %}text-warning{% else %}text-muted{% endif %}"
+                  id="rc-running-{{ race.id }}">{{ race.still_running }} running</span>
+          </span>
+        </div>
+        <div class="progress" style="height:6px">
+          <div class="progress-bar bg-success" id="rc-bar-{{ race.id }}"
+               style="width: {{ (race.finished / race.total * 100) if race.total else 0 }}%"
+               role="progressbar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Main log row -->
+<div class="row g-4">
+
+  <!-- Left: log form -->
+  <div class="col-lg-4">
+    <div class="card finish-log-card mb-3">
+      <div class="card-header">
+        <i class="bi bi-stopwatch text-primary me-2"></i>Log a Finish
+      </div>
+      <div class="card-body">
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.05em">Bib Number</label>
+          <input type="number" id="bibInput" class="form-control bib-input-large"
+                 placeholder="0" min="1" autocomplete="off">
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold small text-muted text-uppercase d-flex align-items-center gap-2" style="letter-spacing:.05em">
+            Finish Time
+            <span class="badge bg-success ms-auto" id="autoNowBadge" title="Auto-updating to current time">
+              <i class="bi bi-clock-fill me-1"></i>Live
+            </span>
+          </label>
+          <div class="input-group">
+            <input type="datetime-local" id="finishTimeInput" class="form-control" step="1">
+            <button class="btn btn-outline-secondary" id="nowBtn" type="button" title="Reset to current time">
+              <i class="bi bi-clock me-1"></i>Now
+            </button>
+          </div>
+          <div class="form-text text-muted" id="autoNowHint">Time auto-updates every second. Type to override.</div>
+        </div>
+
+        <button class="btn btn-primary w-100 py-2 fw-bold" id="logFinishBtn">
+          <i class="bi bi-check-circle me-2"></i>Log Finish
+        </button>
+
+        <!-- Feedback area -->
+        <div id="logFeedback" class="mt-3 d-none">
+          <!-- filled by JS -->
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /col -->
+
+  <!-- Right: recent finishes -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-list-ol text-primary me-2"></i>Recent Finishes</span>
+        <small class="text-muted" id="lastUpdate"></small>
+      </div>
+      <div style="max-height:620px; overflow-y:auto">
+        <table class="table table-hover mb-0" id="finishTable">
+          <thead class="table-sticky">
+            <tr>
+              <th>#</th><th>Bib</th><th>Name</th><th>Race</th>
+              <th>Time</th><th>Elapsed</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="finishBody">
+            {% for ft in recent %}
+            <tr id="ft-row-{{ ft.id }}">
+              <td class="text-muted pos">{{ loop.index }}</td>
+              <td class="bib">{{ ft.bib_number }}</td>
+              <td>{{ ft.runner_name or '—' }}</td>
+              <td><span class="badge rounded-pill bg-primary-subtle text-primary-emphasis fw-semibold">{{ ft.race_name or '?' }}</span></td>
+              <td class="time-display" title="{{ ft.finish_time }}">{{ ft.finish_time[11:19] }}</td>
+              <td class="time-display fw-bold text-primary">{{ ft.elapsed if ft.elapsed else '—' }}</td>
+              <td class="text-end">
+                <button class="btn btn-outline-secondary btn-sm edit-btn"
+                        data-id="{{ ft.id }}" data-time="{{ ft.finish_time }}">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-outline-danger btn-sm delete-btn" data-id="{{ ft.id }}"
+                        data-race-id="{{ ft.race_id }}">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if not recent %}
+        <div class="text-center py-5 text-muted" id="noFinishesMsg">
+          <i class="bi bi-stopwatch" style="font-size:2rem;opacity:.2"></i>
+          <p class="mt-3 small fw-semibold">No finishes logged yet</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div><!-- /col -->
+
+</div><!-- /row -->
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+// Server-rendered race totals (for client-side updates)
+const RACE_TOTALS = {
+  {% for race in races %}
+  {{ race.id }}: {{ race.total }},
+  {% endfor %}
+};
+
+// ── Utility ──────────────────────────────────────────────────────────────
+
+function nowString() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function toServerTime(s) { return s ? s.replace('T', ' ') : ''; }
+function toDatetimeLocal(s) { return s ? s.replace(' ', 'T') : ''; }
+function toDisplayTime(s) {
+  if (!s) return '—';
+  const t = s.replace(' ', 'T');
+  return t.length >= 19 ? t.slice(11, 19) : t.slice(11);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+
+const bibInput        = document.getElementById('bibInput');
+const finishTimeInput = document.getElementById('finishTimeInput');
+const logFinishBtn    = document.getElementById('logFinishBtn');
+const feedbackEl      = document.getElementById('logFeedback');
+const finishBody      = document.getElementById('finishBody');
+const autoNowBadge    = document.getElementById('autoNowBadge');
+const autoNowHint     = document.getElementById('autoNowHint');
+
+// ── Auto-Now ──────────────────────────────────────────────────────────────
+
+let autoNow = true;
+let autoNowTimer = null;
+
+function setAutoNow(enabled) {
+  autoNow = enabled;
+  if (autoNowBadge) {
+    autoNowBadge.style.display = enabled ? '' : 'none';
+  }
+  if (autoNowHint) {
+    autoNowHint.textContent = enabled
+      ? 'Time auto-updates every second. Type to override.'
+      : 'Time manually set. Click "Now" to resume auto-update.';
+  }
+}
+
+function startAutoNow() {
+  clearInterval(autoNowTimer);
+  finishTimeInput.value = nowString();
+  autoNowTimer = setInterval(() => {
+    if (autoNow) finishTimeInput.value = nowString();
+  }, 1000);
+}
+
+// Stop auto-update when user types
+finishTimeInput.addEventListener('input', () => setAutoNow(false));
+
+// "Now" button resumes auto-update
+document.getElementById('nowBtn').addEventListener('click', () => {
+  finishTimeInput.value = nowString();
+  setAutoNow(true);
+});
+
+startAutoNow();
+bibInput.focus();
+
+
+// ── Feedback helpers ──────────────────────────────────────────────────────
+
+function showSuccess(html) {
+  feedbackEl.className = 'mt-3 alert alert-success py-2 small';
+  feedbackEl.innerHTML = html;
+}
+function showError(html) {
+  feedbackEl.className = 'mt-3 alert alert-danger py-2 small';
+  feedbackEl.innerHTML = html;
+}
+function hideFeedback() {
+  feedbackEl.className = 'mt-3 d-none';
+}
+
+
+// ── Race card updates ─────────────────────────────────────────────────────
+
+function updateRaceCard(raceStats) {
+  const { id, finished, still_running, total } = raceStats;
+  const t = RACE_TOTALS[id] || total || 1;
+
+  const elFin  = document.getElementById(`rc-finished-${id}`);
+  const elRun  = document.getElementById(`rc-running-${id}`);
+  const elBar  = document.getElementById(`rc-bar-${id}`);
+  const elDot  = document.getElementById(`rc-dot-${id}`);
+
+  if (elFin) elFin.textContent = finished;
+  if (elRun) {
+    elRun.textContent = `${still_running} running`;
+    elRun.className   = `fw-semibold small ${still_running > 0 ? 'text-warning' : 'text-muted'}`;
+  }
+  if (elBar) elBar.style.width = (finished / t * 100) + '%';
+  if (elDot) {
+    if (still_running > 0) elDot.classList.add('active');
+    else elDot.classList.remove('active');
+  }
+}
+
+async function refreshRaceStats() {
+  try {
+    const res  = await fetch('/finish-line/stats');
+    const data = await res.json();
+    data.forEach(updateRaceCard);
+    const el = document.getElementById('lastUpdate');
+    if (el) el.textContent = 'Just updated';
+  } catch { /* silently fail */ }
+}
+
+setInterval(refreshRaceStats, 30000);
+
+
+// ── Log finish ────────────────────────────────────────────────────────────
+
+logFinishBtn.addEventListener('click', async () => {
+  hideFeedback();
+  const bib  = parseInt(bibInput.value);
+  const time = finishTimeInput.value;
+
+  if (!bib || bib <= 0) { showError('Enter a valid bib number.'); bibInput.focus(); return; }
+  if (!time)            { showError('Enter a finish time.'); return; }
+
+  logFinishBtn.disabled = true;
+  logFinishBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving…';
+
+  try {
+    const res  = await fetch('/finish-line/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bib_number: bib, finish_time: toServerTime(time) }),
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      const ft = data.finish;
+      showSuccess(`<i class="bi bi-check-circle-fill me-1"></i><strong>${ft.runner_name}</strong> — ${ft.race_name} — ${toDisplayTime(ft.finish_time)} <span class="text-muted">(${ft.elapsed || '—'})</span>`);
+
+      // Prepend row to table
+      const noMsg = document.getElementById('noFinishesMsg');
+      if (noMsg) noMsg.style.display = 'none';
+      const newRow = makeFinishRow(ft);
+      finishBody.insertBefore(newRow, finishBody.firstChild);
+      renumber();
+
+      // Update race card
+      updateRaceCard(data.race_stats);
+
+      bibInput.value = '';
+      // Resume auto-now after logging
+      setAutoNow(true);
+      bibInput.focus();
+    } else {
+      if (res.status === 404) {
+        showError(`<i class="bi bi-x-circle-fill me-1"></i>${data.error}`);
+      } else if (res.status === 409) {
+        showError(`<i class="bi bi-exclamation-triangle-fill me-1"></i>${data.error} Find the entry in the list to edit it.`);
+      } else {
+        showError(data.error || 'An error occurred.');
+      }
+    }
+  } catch {
+    showError('Network error. Please try again.');
+  } finally {
+    logFinishBtn.disabled = false;
+    logFinishBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Log Finish';
+  }
+});
+
+bibInput.addEventListener('keydown', e => { if (e.key === 'Enter') logFinishBtn.click(); });
+
+
+// ── Build a finish row ────────────────────────────────────────────────────
+
+function makeFinishRow(ft) {
+  const tr = document.createElement('tr');
+  tr.id = `ft-row-${ft.id}`;
+  tr.innerHTML = `
+    <td class="text-muted pos"></td>
+    <td class="bib">${ft.bib_number}</td>
+    <td>${ft.runner_name || '—'}</td>
+    <td><span class="badge rounded-pill bg-primary-subtle text-primary-emphasis fw-semibold">${ft.race_name || '?'}</span></td>
+    <td class="time-display" title="${ft.finish_time}">${toDisplayTime(ft.finish_time)}</td>
+    <td class="time-display fw-bold text-primary">${ft.elapsed || '—'}</td>
+    <td class="text-end">
+      <button class="btn btn-outline-secondary btn-sm edit-btn"
+              data-id="${ft.id}" data-time="${ft.finish_time}">
+        <i class="bi bi-pencil"></i>
+      </button>
+      <button class="btn btn-outline-danger btn-sm delete-btn"
+              data-id="${ft.id}" data-race-id="${ft.race_id}">
+        <i class="bi bi-trash"></i>
+      </button>
+    </td>`;
+  bindRowEvents(tr);
+  return tr;
+}
+
+function renumber() {
+  finishBody.querySelectorAll('tr').forEach((row, i) => {
+    const cell = row.querySelector('.pos');
+    if (cell) cell.textContent = i + 1;
+  });
+}
+
+// Bind existing server-rendered rows
+bindRowEvents(finishBody);
+
+function bindRowEvents(container) {
+  container.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', () => startEdit(btn)));
+  container.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', () => doDelete(btn)));
+}
+
+
+// ── Inline edit ───────────────────────────────────────────────────────────
+
+function startEdit(btn) {
+  const id   = btn.dataset.id;
+  const time = btn.dataset.time;
+  const row  = document.getElementById(`ft-row-${id}`);
+  row.classList.add('edit-row');
+
+  const cells = row.querySelectorAll('td');
+  cells[4].innerHTML = `<input type="datetime-local" class="form-control form-control-sm" step="1"
+                                value="${toDatetimeLocal(time)}" id="edit-time-${id}">`;
+  cells[6].innerHTML = `
+    <button class="btn btn-success btn-sm save-btn" data-id="${id}">
+      <i class="bi bi-check-lg me-1"></i>Save
+    </button>
+    <button class="btn btn-secondary btn-sm cancel-btn">Cancel</button>`;
+
+  cells[6].querySelector('.save-btn').addEventListener('click',   () => doSave(id, time));
+  cells[6].querySelector('.cancel-btn').addEventListener('click', () => cancelEdit(id, time));
+}
+
+function cancelEdit(id, time) {
+  const row   = document.getElementById(`ft-row-${id}`);
+  row.classList.remove('edit-row');
+  const cells = row.querySelectorAll('td');
+  cells[4].innerHTML = `<span class="time-display" title="${time}">${toDisplayTime(time)}</span>`;
+  cells[6].innerHTML = `
+    <button class="btn btn-outline-secondary btn-sm edit-btn"
+            data-id="${id}" data-time="${time}">
+      <i class="bi bi-pencil"></i></button>
+    <button class="btn btn-outline-danger btn-sm delete-btn" data-id="${id}">
+      <i class="bi bi-trash"></i></button>`;
+  bindRowEvents(cells[6]);
+}
+
+async function doSave(id, originalTime) {
+  const newTime = document.getElementById(`edit-time-${id}`)?.value;
+  if (!newTime) return;
+
+  try {
+    const res  = await fetch(`/finish/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ finish_time: toServerTime(newTime) }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const t   = data.finish_time;
+      const row = document.getElementById(`ft-row-${id}`);
+      row.classList.remove('edit-row');
+      const cells = row.querySelectorAll('td');
+      cells[4].innerHTML = `<span class="time-display" title="${t}">${toDisplayTime(t)}</span>`;
+      cells[5].innerHTML = `<span class="time-display fw-bold text-primary">${data.elapsed || '—'}</span>`;
+      cells[6].innerHTML = `
+        <button class="btn btn-outline-secondary btn-sm edit-btn"
+                data-id="${id}" data-time="${t}">
+          <i class="bi bi-pencil"></i></button>
+        <button class="btn btn-outline-danger btn-sm delete-btn" data-id="${id}">
+          <i class="bi bi-trash"></i></button>`;
+      bindRowEvents(cells[6]);
+    }
+  } catch {
+    alert('Could not save. Please try again.');
+  }
+}
+
+
+// ── Delete ────────────────────────────────────────────────────────────────
+
+async function doDelete(btn) {
+  if (!confirm('Delete this finish time entry?')) return;
+  const id = btn.dataset.id;
+
+  try {
+    const res  = await fetch(`/finish/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById(`ft-row-${id}`)?.remove();
+      renumber();
+      if (data.race_stats) updateRaceCard(data.race_stats);
+    }
+  } catch {
+    alert('Could not delete. Please try again.');
+  }
+}
+</script>
+{% endblock %}

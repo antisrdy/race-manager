@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+{% block title %}Ranking — Race Manager{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="race-header d-flex align-items-center gap-3 flex-wrap mb-4">
+  <div class="flex-grow-1">
+    <h2 class="mb-0 fw-bold"><i class="bi bi-trophy text-primary me-2"></i>Ranking</h2>
+    <div class="text-muted small">Results by race — elapsed time from gun start</div>
+  </div>
+  <small class="text-muted" id="lastUpdate"></small>
+</div>
+
+{% if races %}
+
+<!-- Search -->
+<div class="mb-4">
+  <div class="input-group">
+    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+    <input type="search" class="form-control" id="runnerSearch"
+           placeholder="Search by name or bib number…" autocomplete="off">
+  </div>
+</div>
+
+<!-- Per-race cards -->
+{% for race in races %}
+<div class="card mb-4" id="race-card-{{ race.id }}">
+  <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-flag text-primary"></i>
+      <span class="fw-bold fs-5">{{ race.name }}</span>
+      {% if race.start_time %}
+      <span class="text-muted small ms-1" data-start="{{ race.start_time }}">
+        <i class="bi bi-clock me-1"></i>{{ race.start_time[11:16] }}
+        <span class="elapsed-counter"></span>
+      </span>
+      {% else %}
+      <span class="badge bg-warning text-dark ms-1 small">No start time</span>
+      {% endif %}
+    </div>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <span class="text-muted small d-flex align-items-center gap-1">
+        <span class="pulse-dot" id="dot-{{ race.id }}"></span>
+        <span id="still-{{ race.id }}">—</span>&nbsp;still running
+      </span>
+      <div class="nav nav-pills gap-1" id="gender-pills-{{ race.id }}">
+        <button class="nav-link active btn btn-sm px-3 py-1" data-gender="all">Overall</button>
+      </div>
+    </div>
+  </div>
+
+  {% if not race.start_time %}
+  <div class="px-3 pt-3">
+    <div class="alert alert-warning mb-0 py-2 small">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>
+      No start time set — elapsed times cannot be calculated.
+      <a href="/" class="alert-link ms-1">Set it on the home page.</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <div id="ranking-container-{{ race.id }}">
+    <div class="text-center py-5 text-muted">
+      <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem"></div>
+      <p class="mt-3 small">Loading…</p>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<div id="searchNoResults" style="display:none">
+  <div class="card">
+    <div class="card-body text-center py-4 text-muted">
+      <i class="bi bi-search" style="font-size:2rem;opacity:.2"></i>
+      <p class="mt-2 small mb-0">No runners match your search.</p>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-trophy" style="font-size:3rem;opacity:.2"></i>
+    <p class="mt-3 fw-semibold">No races yet</p>
+    <p class="small mb-3">Import runners from the <a href="/">home page</a> to get started.</p>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+const RACES = [
+  {% for race in races %}
+  { id: {{ race.id }}, name: {{ race.name | tojson }}, start_time: {{ race.start_time | tojson }} }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+const raceState = {};
+RACES.forEach(r => { raceState[r.id] = { data: null, gender: 'all' }; });
+
+let lastFetchedAt = null;
+let searchQuery   = '';
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+
+function normalise(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function toDisplayTime(s) {
+  if (!s) return '—';
+  const t = s.replace(' ', 'T');
+  return t.length >= 19 ? t.slice(11, 19) : t.slice(11);
+}
+
+// Escape a value for use inside an HTML attribute
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+// ── Search ────────────────────────────────────────────────────────────────
+
+function applySearch() {
+  const q = searchQuery;
+
+  document.querySelectorAll('.card[id^="race-card-"]').forEach(card => {
+    const rows = card.querySelectorAll('tr[data-name]');
+
+    if (!rows.length) {
+      // No data rows yet (still loading or truly empty) — hide during search
+      card.style.display = q ? 'none' : '';
+      return;
+    }
+
+    let visible = 0;
+    rows.forEach(row => {
+      const match = !q
+        || normalise(row.dataset.name).includes(q)
+        || row.dataset.bib.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    card.style.display = (visible > 0 || !q) ? '' : 'none';
+  });
+
+  const anyVisible = [...document.querySelectorAll('.card[id^="race-card-"]')]
+    .some(c => c.style.display !== 'none');
+  const noResults = document.getElementById('searchNoResults');
+  if (noResults) noResults.style.display = (q && !anyVisible) ? '' : 'none';
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+
+function renderRanking(raceId, data, genderFilter) {
+  const container = document.getElementById('ranking-container-' + raceId);
+  if (!container) return;
+
+  // Still-running counter in the card header
+  const stillEl = document.getElementById('still-' + raceId);
+  const dotEl   = document.getElementById('dot-' + raceId);
+  if (stillEl) stillEl.textContent = data.counts.still_running;
+  if (dotEl)   dotEl.classList.toggle('active', data.counts.still_running > 0);
+
+  buildGenderPills(raceId, data);
+
+  const gf = genderFilter || raceState[raceId].gender || 'all';
+  let finishers = data.finishers;
+  if (gf !== 'all') {
+    finishers = data.finishers
+      .filter(r => (r.gender || '').toLowerCase() === gf.toLowerCase())
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+  }
+
+  if (!finishers.length && !data.still_running.length && !data.dns.length) {
+    container.innerHTML = `<div class="text-center py-5 text-muted">
+      <i class="bi bi-trophy" style="font-size:2.5rem;opacity:.2"></i>
+      <p class="mt-3 small fw-semibold">No finishes logged yet for this race.</p>
+    </div>`;
+    applySearch();
+    return;
+  }
+
+  let html = `<div style="max-height:540px;overflow-y:auto">
+    <table class="table table-hover mb-0 table-sticky">
+      <thead><tr>
+        <th>Rank</th><th>Bib</th><th>Name</th><th>Age</th><th>Gender</th>
+        <th>Finish Time</th><th>Elapsed</th>
+      </tr></thead><tbody>`;
+
+  finishers.forEach(r => {
+    let rankCell;
+    if      (r.rank === 1) rankCell = '<span class="rank-medal">🥇</span>';
+    else if (r.rank === 2) rankCell = '<span class="rank-medal">🥈</span>';
+    else if (r.rank === 3) rankCell = '<span class="rank-medal">🥉</span>';
+    else                   rankCell = `<span class="rank-number">${r.rank}</span>`;
+
+    html += `<tr class="${r.rank <= 3 ? 'rank-' + r.rank : ''}"
+                 data-name="${esc(r.name)}" data-bib="${r.bib_number}">
+      <td>${rankCell}</td>
+      <td class="bib">${r.bib_number}</td>
+      <td><strong>${r.name}</strong></td>
+      <td>${r.age || '—'}</td>
+      <td>${r.gender || '—'}</td>
+      <td class="time-display">${toDisplayTime(r.finish_time)}</td>
+      <td class="time-display fw-bold text-primary">${r.elapsed || '—'}</td>
+    </tr>`;
+  });
+
+  if (gf === 'all') {
+    data.still_running.forEach(r => {
+      html += `<tr class="table-warning" data-name="${esc(r.name)}" data-bib="${r.bib_number}">
+        <td><span class="pulse-dot active" style="width:8px;height:8px;margin-right:0"></span></td>
+        <td class="bib">${r.bib_number}</td>
+        <td>${r.name}</td>
+        <td>${r.age || '—'}</td>
+        <td>${r.gender || '—'}</td>
+        <td class="text-muted fst-italic small" colspan="2">Running…</td>
+      </tr>`;
+    });
+    data.dns.forEach(r => {
+      html += `<tr class="text-muted" data-name="${esc(r.name)}" data-bib="${r.bib_number}">
+        <td><span class="badge badge-dns">DNS</span></td>
+        <td class="bib">${r.bib_number}</td>
+        <td>${r.name}</td>
+        <td>${r.age || '—'}</td>
+        <td>${r.gender || '—'}</td>
+        <td colspan="2">—</td>
+      </tr>`;
+    });
+  }
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+  applySearch(); // re-apply any active search after DOM update
+}
+
+// ── Gender pills ──────────────────────────────────────────────────────────
+
+function buildGenderPills(raceId, data) {
+  const pillsEl = document.getElementById('gender-pills-' + raceId);
+  if (!pillsEl) return;
+
+  const genders = new Set();
+  [...data.finishers, ...data.still_running, ...data.dns].forEach(r => {
+    if (r.gender) genders.add(r.gender);
+  });
+
+  const currentGenders = Array.from(pillsEl.querySelectorAll('[data-gender]:not([data-gender="all"])'))
+    .map(b => b.dataset.gender).join(',');
+  const newGenders = Array.from(genders).sort().join(',');
+  if (currentGenders === newGenders) return; // no rebuild needed
+
+  pillsEl.innerHTML = `<button class="nav-link btn btn-sm px-3 py-1 ${raceState[raceId].gender === 'all' ? 'active' : ''}" data-gender="all">Overall</button>`;
+  Array.from(genders).sort().forEach(g => {
+    pillsEl.insertAdjacentHTML('beforeend',
+      `<button class="nav-link btn btn-sm px-3 py-1 ${raceState[raceId].gender === g ? 'active' : ''}" data-gender="${g}">${g}</button>`
+    );
+  });
+
+  pillsEl.querySelectorAll('[data-gender]').forEach(btn => {
+    btn.addEventListener('click', function () {
+      pillsEl.querySelectorAll('[data-gender]').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      raceState[raceId].gender = this.dataset.gender;
+      if (raceState[raceId].data) {
+        renderRanking(raceId, raceState[raceId].data, raceState[raceId].gender);
+        // Re-mark active pill (renderRanking only rebuilds pills when genders change)
+        setTimeout(() => {
+          document.querySelectorAll(`#gender-pills-${raceId} [data-gender]`).forEach(b => {
+            b.classList.toggle('active', b.dataset.gender === raceState[raceId].gender);
+          });
+        }, 0);
+      }
+    });
+  });
+}
+
+// ── Fetch ─────────────────────────────────────────────────────────────────
+
+async function fetchRanking(raceId) {
+  try {
+    const res  = await fetch(`/races/${raceId}/ranking`);
+    const data = await res.json();
+    raceState[raceId].data = data;
+    renderRanking(raceId, data, raceState[raceId].gender);
+  } catch { /* silently fail */ }
+}
+
+async function fetchAll() {
+  await Promise.all(RACES.map(r => fetchRanking(r.id)));
+  lastFetchedAt = new Date();
+  const el = document.getElementById('lastUpdate');
+  if (el) el.textContent = 'Just updated';
+}
+
+// ── "Updated Xs ago" ticker ───────────────────────────────────────────────
+
+setInterval(() => {
+  const el = document.getElementById('lastUpdate');
+  if (el && lastFetchedAt) {
+    const secs = Math.round((new Date() - lastFetchedAt) / 1000);
+    el.textContent = secs < 5 ? 'Just updated' : `Updated ${secs}s ago`;
+  }
+}, 5000);
+
+// ── Live search ───────────────────────────────────────────────────────────
+
+const searchInput = document.getElementById('runnerSearch');
+if (searchInput) {
+  searchInput.addEventListener('input', function () {
+    searchQuery = normalise(this.value.trim());
+    applySearch();
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+if (RACES.length) {
+  fetchAll();
+  setInterval(fetchAll, 30000);
+}
+</script>
+{% endblock %}
