@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}Finish Line — Race Manager{% endblock %}
+{% block title %}Arrivée — Gestion des Courses{% endblock %}
 
 {% block content %}
 
 <!-- Header -->
 <div class="race-header d-flex align-items-center gap-3 flex-wrap mb-4">
   <div class="flex-grow-1">
-    <h2 class="mb-0 fw-bold"><i class="bi bi-flag-fill text-primary me-2"></i>Finish Line</h2>
-    <div class="text-muted small">Log finishes — bib number is automatically linked to its race</div>
+    <h2 class="mb-0 fw-bold"><i class="bi bi-flag-fill text-primary me-2"></i>Arrivée</h2>
+    <div class="text-muted small">Enregistrer les arrivées — le numéro de dossard est automatiquement lié à sa course</div>
   </div>
 </div>
 
@@ -26,17 +26,17 @@
               {{ race.start_time[11:16] }}<br>
               <span class="elapsed-counter" style="font-size:.8em; white-space:nowrap"></span>
             </span>
-            {% else %}<span class="badge bg-warning text-dark">No time</span>{% endif %}
+            {% else %}<span class="badge bg-warning text-dark">Pas d'heure</span>{% endif %}
           </small>
         </div>
         <div class="d-flex align-items-center gap-2 mb-2">
           <span class="text-success fw-bold" id="rc-finished-{{ race.id }}">{{ race.finished }}</span>
-          <span class="text-muted small">/ {{ race.total }} finished</span>
+          <span class="text-muted small">/ {{ race.total }} arrivés</span>
           <span class="ms-auto d-flex align-items-center gap-1">
             <span class="pulse-dot {% if race.still_running > 0 %}active{% endif %}"
                   id="rc-dot-{{ race.id }}"></span>
             <span class="fw-semibold small {% if race.still_running > 0 %}text-warning{% else %}text-muted{% endif %}"
-                  id="rc-running-{{ race.id }}">{{ race.still_running }} running</span>
+                  id="rc-running-{{ race.id }}">{{ race.still_running }} en course</span>
           </span>
         </div>
         <div class="progress" style="height:6px">
@@ -58,34 +58,34 @@
   <div class="col-lg-4">
     <div class="card finish-log-card mb-3">
       <div class="card-header">
-        <i class="bi bi-stopwatch text-primary me-2"></i>Log a Finish
+        <i class="bi bi-stopwatch text-primary me-2"></i>Enregistrer une Arrivée
       </div>
       <div class="card-body">
 
         <div class="mb-3">
-          <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.05em">Bib Number</label>
+          <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.05em">Numéro de Dossard</label>
           <input type="number" id="bibInput" class="form-control bib-input-large"
                  placeholder="0" min="1" autocomplete="off">
         </div>
 
         <div class="mb-4">
           <label class="form-label fw-semibold small text-muted text-uppercase d-flex align-items-center gap-2" style="letter-spacing:.05em">
-            Finish Time
-            <span class="badge bg-success ms-auto" id="autoNowBadge" title="Auto-updating to current time">
+            Heure d'Arrivée
+            <span class="badge bg-success ms-auto" id="autoNowBadge" title="Mise à jour automatique vers l'heure actuelle">
               <i class="bi bi-clock-fill me-1"></i>Live
             </span>
           </label>
           <div class="input-group">
             <input type="datetime-local" id="finishTimeInput" class="form-control" step="1">
-            <button class="btn btn-outline-secondary" id="nowBtn" type="button" title="Reset to current time">
-              <i class="bi bi-clock me-1"></i>Now
+            <button class="btn btn-outline-secondary" id="nowBtn" type="button" title="Réinitialiser à l'heure actuelle">
+              <i class="bi bi-clock me-1"></i>Maintenant
             </button>
           </div>
-          <div class="form-text text-muted" id="autoNowHint">Time auto-updates every second. Type to override.</div>
+          <div class="form-text text-muted" id="autoNowHint">L'heure se met à jour automatiquement chaque seconde. Tapez pour remplacer.</div>
         </div>
 
         <button class="btn btn-primary w-100 py-2 fw-bold" id="logFinishBtn">
-          <i class="bi bi-check-circle me-2"></i>Log Finish
+          <i class="bi bi-check-circle me-2"></i>Enregistrer l'Arrivée
         </button>
 
         <!-- Feedback area -->
@@ -101,15 +101,15 @@
   <div class="col-lg-8">
     <div class="card">
       <div class="card-header d-flex align-items-center justify-content-between">
-        <span><i class="bi bi-list-ol text-primary me-2"></i>Recent Finishes</span>
+        <span><i class="bi bi-list-ol text-primary me-2"></i>Arrivées Récentes</span>
         <small class="text-muted" id="lastUpdate"></small>
       </div>
       <div style="max-height:620px; overflow-y:auto">
         <table class="table table-hover mb-0" id="finishTable">
           <thead class="table-sticky">
             <tr>
-              <th>#</th><th>Bib</th><th>Name</th><th>Race</th>
-              <th>Time</th><th>Elapsed</th><th></th>
+              <th>#</th><th>Dossard</th><th>Nom</th><th>Course</th>
+              <th>Heure</th><th>Temps</th><th></th>
             </tr>
           </thead>
           <tbody id="finishBody">
@@ -138,7 +138,7 @@
         {% if not recent %}
         <div class="text-center py-5 text-muted" id="noFinishesMsg">
           <i class="bi bi-stopwatch" style="font-size:2rem;opacity:.2"></i>
-          <p class="mt-3 small fw-semibold">No finishes logged yet</p>
+          <p class="mt-3 small fw-semibold">Aucune arrivée enregistrée pour le moment</p>
         </div>
         {% endif %}
       </div>
@@ -196,8 +196,8 @@ function setAutoNow(enabled) {
   }
   if (autoNowHint) {
     autoNowHint.textContent = enabled
-      ? 'Time auto-updates every second. Type to override.'
-      : 'Time manually set. Click "Now" to resume auto-update.';
+      ? 'L\'heure se met à jour automatiquement chaque seconde. Tapez pour remplacer.'
+      : 'Heure définie manuellement. Cliquez sur "Maintenant" pour reprendre la mise à jour auto.';
   }
 }
 

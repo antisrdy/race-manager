@@ -1,0 +1,11 @@
+DOSSARD,NOM,PRENOM,SEXE,DISTANCE,DOSSIER
+11,Dupont,Jean,M,Trail 10K,COMPLET
+12,Martin,Sophie,F,Trail 10K,COMPLET
+13,Bernard,Pierre,M,Trail 10K,INCOMPLET
+14,Dubois,Marie,F,Trail 5K,COMPLET
+15,Thomas,Luc,M,Trail 5K,COMPLET
+16,Robert,Claire,F,Trail 5K,INCOMPLET
+17,Petit,Michel,M,Marathon,COMPLET
+18,Richard,Anne,F,Marathon,COMPLET
+19,Durand,Paul,M,Marathon,COMPLET
+20,Leroy,Julie,F,Marathon,INCOMPLET

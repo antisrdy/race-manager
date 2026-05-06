@@ -92,12 +92,12 @@ def set_start_time(race_id):
         dt  = datetime.fromisoformat(raw)
         val = dt.strftime('%Y-%m-%d %H:%M:%S')
     except (ValueError, TypeError):
-        flash('Invalid start time.', 'danger')
+        flash('Heure de départ invalide.', 'danger')
         return redirect(url_for('index'))
     db = get_db()
     db.execute("UPDATE races SET start_time = ? WHERE id = ?", (val, race_id))
     db.commit()
-    flash('Start time saved.', 'success')
+    flash('Heure de départ enregistrée.', 'success')
     return redirect(url_for('index'))
 
 
@@ -107,7 +107,7 @@ def delete_race(race_id):
     db   = get_db()
     db.execute("DELETE FROM races WHERE id = ?", (race_id,))
     db.commit()
-    flash(f'Race "{race["name"]}" deleted.', 'info')
+    flash(f'Course "{race["name"]}" supprimée.', 'info')
     return redirect(url_for('index'))
 
 
@@ -155,6 +155,60 @@ def parse_upload(file_storage):
     return rows
 
 
+def normalize_runner_row(row):
+    """
+    Normalize a row from French column names to English ones.
+    Supports both French (DOSSARD, DISTANCE, NOM, PRENOM, SEXE, DOSSIER)
+    and English (bib_number, race, name, gender, dossier_complete) columns.
+    Returns a normalized dict with English keys.
+    """
+    normalized = {}
+    
+    # Map French columns to English
+    # DOSSARD -> bib_number
+    if 'dossard' in row:
+        normalized['bib_number'] = row['dossard']
+    elif 'bib_number' in row:
+        normalized['bib_number'] = row['bib_number']
+    
+    # DISTANCE -> race
+    if 'distance' in row:
+        normalized['race'] = row['distance']
+    elif 'race' in row:
+        normalized['race'] = row['race']
+    
+    # NOM + PRENOM -> name
+    if 'nom' in row and 'prenom' in row:
+        nom = str(row.get('nom', '') or '').strip()
+        prenom = str(row.get('prenom', '') or '').strip()
+        normalized['name'] = f"{prenom} {nom}".strip()
+    elif 'name' in row:
+        normalized['name'] = row['name']
+    
+    # SEXE -> gender
+    if 'sexe' in row:
+        normalized['gender'] = row['sexe']
+    elif 'gender' in row:
+        normalized['gender'] = row['gender']
+    
+    # DOSSIER -> dossier_complete (should be 'COMPLET' or 'INCOMPLET')
+    if 'dossier' in row:
+        dossier_val = str(row.get('dossier', '') or '').strip().upper()
+        # Check if dossier is complete (COMPLET, COMPLETE, 1, YES, OUI)
+        normalized['dossier_complete'] = 1 if dossier_val in ('COMPLET', 'COMPLETE', '1', 'YES', 'OUI') else 0
+    elif 'dossier_complete' in row:
+        normalized['dossier_complete'] = row['dossier_complete']
+    else:
+        # Default to incomplete if not specified
+        normalized['dossier_complete'] = 0
+    
+    # Copy other fields as-is
+    if 'age' in row:
+        normalized['age'] = row['age']
+    
+    return normalized
+
+
 def _do_import(rows, race_id, db, race_lookup=None):
     """
     Insert runners. If race_lookup is given (global import), the 'race' column
@@ -164,8 +218,11 @@ def _do_import(rows, race_id, db, race_lookup=None):
     imported = skipped = errors = new_races = 0
 
     for row in rows:
-        bib_raw = str(row.get('bib_number', '') or '').strip()
-        name    = str(row.get('name', '') or '').strip()
+        # Normalize French column names to English
+        normalized = normalize_runner_row(row)
+        
+        bib_raw = str(normalized.get('bib_number', '') or '').strip()
+        name    = str(normalized.get('name', '') or '').strip()
 
         if not bib_raw or not name:
             errors += 1
@@ -177,17 +234,20 @@ def _do_import(rows, race_id, db, race_lookup=None):
             errors += 1
             continue
 
-        age_raw = str(row.get('age', '') or '').strip()
+        age_raw = str(normalized.get('age', '') or '').strip()
         try:
             age = int(age_raw) if age_raw and age_raw.lower() != 'n/a' else None
         except ValueError:
             age = None
 
-        gender = str(row.get('gender', '') or '').strip() or None
+        gender = str(normalized.get('gender', '') or '').strip() or None
+        
+        # Get dossier_complete status (default to 0 if not provided)
+        dossier_complete = normalized.get('dossier_complete', 0)
 
         target_race_id = race_id
         if race_lookup is not None:
-            race_name_raw  = str(row.get('race', '') or '').strip()
+            race_name_raw  = str(normalized.get('race', '') or '').strip()
             target_race_id = race_lookup.get(race_name_raw.lower())
             if target_race_id is None:
                 if race_name_raw:
@@ -213,8 +273,8 @@ def _do_import(rows, race_id, db, race_lookup=None):
             continue
 
         db.execute(
-            "INSERT INTO runners (race_id, bib_number, name, age, gender) VALUES (?, ?, ?, ?, ?)",
-            (target_race_id, bib, name, age, gender)
+            "INSERT INTO runners (race_id, bib_number, name, age, gender, dossier_complete) VALUES (?, ?, ?, ?, ?, ?)",
+            (target_race_id, bib, name, age, gender, dossier_complete)
         )
         imported += 1
 
@@ -223,20 +283,20 @@ def _do_import(rows, race_id, db, race_lookup=None):
 
 
 def _import_flash(imported, skipped, errors, new_races=0):
-    parts = [f'Imported {imported} runner{"s" if imported != 1 else ""}.']
+    parts = [f'{imported} coureur{"s" if imported != 1 else ""} importé{"s" if imported != 1 else ""}.']
     if new_races:
-        parts.append(f'{new_races} race{"s" if new_races != 1 else ""} created automatically — set their start times below.')
+        parts.append(f'{new_races} course{"s" if new_races != 1 else ""} créée{"s" if new_races != 1 else ""} automatiquement — définissez leur heure de départ ci-dessous.')
     if skipped:
-        parts.append(f'{skipped} skipped (already imported).')
+        parts.append(f'{skipped} ignoré{"s" if skipped != 1 else ""} (déjà importés).')
     if errors:
-        parts.append(f'{errors} skipped (errors or bib already in another race).')
+        parts.append(f'{errors} ignoré{"s" if errors != 1 else ""} (erreurs ou dossard déjà dans une autre course).')
     return ' '.join(parts), 'success' if imported > 0 else 'warning'
 
 
 @app.route('/import', methods=['POST'])
 def import_runners_global():
     if 'file' not in request.files or request.files['file'].filename == '':
-        flash('No file selected.', 'danger')
+        flash('Aucun fichier sélectionné.', 'danger')
         return redirect(url_for('index'))
 
     file = request.files['file']
@@ -247,12 +307,27 @@ def import_runners_global():
         return redirect(url_for('index'))
 
     if not rows:
-        flash('The file contains no data rows.', 'danger')
+        flash('Le fichier ne contient aucune ligne de données.', 'danger')
         return redirect(url_for('index'))
 
-    missing = {'bib_number', 'name', 'race'} - set(rows[0].keys())
-    if missing:
-        flash(f'Missing required columns: {", ".join(sorted(missing))}', 'danger')
+    # Check for required columns - accept both French and English names
+    first_row_keys = set(rows[0].keys())
+    has_bib = 'bib_number' in first_row_keys or 'dossard' in first_row_keys
+    has_name = 'name' in first_row_keys or ('nom' in first_row_keys and 'prenom' in first_row_keys)
+    has_race = 'race' in first_row_keys or 'distance' in first_row_keys
+    has_dossier = 'dossier_complete' in first_row_keys or 'dossier' in first_row_keys
+    
+    if not has_bib or not has_name or not has_race or not has_dossier:
+        missing_parts = []
+        if not has_bib:
+            missing_parts.append('bib_number/DOSSARD')
+        if not has_name:
+            missing_parts.append('name or (NOM + PRENOM)')
+        if not has_race:
+            missing_parts.append('race/DISTANCE')
+        if not has_dossier:
+            missing_parts.append('dossier_complete/DOSSIER')
+        flash(f'Colonnes obligatoires manquantes : {", ".join(missing_parts)}', 'danger')
         return redirect(url_for('index'))
 
     db = get_db()

@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}Check-in — Race Manager{% endblock %}
+{% block title %}Pointage — Gestion des Courses{% endblock %}
 
 {% block content %}
 
 <!-- Header -->
 <div class="race-header d-flex align-items-center gap-3 flex-wrap mb-4">
   <div class="flex-grow-1">
-    <h2 class="mb-0 fw-bold"><i class="bi bi-check2-square text-primary me-2"></i>Check-in</h2>
-    <div class="text-muted small">Mark runners as present for all races</div>
+    <h2 class="mb-0 fw-bold"><i class="bi bi-check2-square text-primary me-2"></i>Pointage</h2>
+    <div class="text-muted small">Marquer les coureurs comme présents pour toutes les courses</div>
   </div>
   <button class="btn btn-primary fw-semibold" id="globalCheckinAllBtn">
-    <i class="bi bi-check2-all me-2"></i>Check In Everyone
+    <i class="bi bi-check2-all me-2"></i>Pointer Tout le Monde
   </button>
 </div>
 
@@ -18,10 +18,10 @@
 <div class="card mb-4">
   <div class="card-body py-3">
     <div class="d-flex align-items-center justify-content-between mb-2">
-      <span class="fw-semibold">Overall Progress</span>
+      <span class="fw-semibold">Progression générale</span>
       <span class="text-muted small">
         <span id="globalChecked">{{ total_checked }}</span>
-        / <span id="globalTotal">{{ total_runners }}</span> runners checked in
+        / <span id="globalTotal">{{ total_runners }}</span> coureurs pointés
       </span>
     </div>
     <div class="progress">
@@ -37,7 +37,7 @@
   <div class="input-group">
     <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
     <input type="search" class="form-control" id="runnerSearch"
-           placeholder="Search by name or bib number…" autocomplete="off">
+           placeholder="Rechercher par nom ou numéro de dossard…" autocomplete="off">
   </div>
 </div>
 
@@ -54,7 +54,7 @@
           <span class="elapsed-counter"></span>
         </span>
         {% else %}
-        <span class="badge bg-warning text-dark ms-2 small">No start time</span>
+        <span class="badge bg-warning text-dark ms-2 small">Pas d'heure de départ</span>
         {% endif %}
       </div>
       <div class="d-flex align-items-center gap-3">
@@ -64,7 +64,7 @@
         </span>
         <button class="btn btn-outline-primary btn-sm fw-semibold checkin-all-race-btn"
                 data-race-id="{{ group.race.id }}">
-          <i class="bi bi-check2-all me-1"></i>Check In All
+          <i class="bi bi-check2-all me-1"></i>Pointer Tous
         </button>
       </div>
     </div>
@@ -83,8 +83,8 @@
       <table class="table table-hover mb-0 table-sticky">
         <thead>
           <tr>
-            <th>Bib</th><th>Name</th><th>Age</th><th>Gender</th>
-            <th>Status</th><th class="text-center">Present</th>
+            <th>Dossard</th><th>Nom</th><th>Âge</th><th>Sexe</th><th>Dossier</th>
+            <th>Statut</th><th class="text-center">Présent</th>
           </tr>
         </thead>
         <tbody>
@@ -95,10 +95,17 @@
             <td>{{ r.age if r.age else '—' }}</td>
             <td>{{ r.gender if r.gender else '—' }}</td>
             <td>
+              {% if r.dossier_complete %}
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Complet</span>
+              {% else %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Incomplet</span>
+              {% endif %}
+            </td>
+            <td>
               {% if r.finish_time %}
-                <span class="badge badge-finished"><i class="bi bi-check-circle me-1"></i>Finished</span>
+                <span class="badge badge-finished"><i class="bi bi-check-circle me-1"></i>Arrivé</span>
               {% elif r.checked_in %}
-                <span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Checked In</span>
+                <span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Pointé</span>
               {% else %}
                 <span class="badge badge-absent">Absent</span>
               {% endif %}
@@ -119,7 +126,7 @@
     {% else %}
     <div class="card-body text-center py-4 text-muted">
       <i class="bi bi-people" style="font-size:2rem;opacity:.2"></i>
-      <p class="mt-2 small mb-0">No runners in this race yet.</p>
+      <p class="mt-2 small mb-0">Aucun coureur dans cette course pour le moment.</p>
     </div>
     {% endif %}
 
@@ -130,8 +137,8 @@
 <div class="card">
   <div class="card-body text-center py-5 text-muted">
     <i class="bi bi-people" style="font-size:3rem;opacity:.2"></i>
-    <p class="mt-3 fw-semibold">No races or runners yet</p>
-    <p class="small mb-3">Import a CSV or Excel file from the <a href="/">home page</a> to get started.</p>
+    <p class="mt-3 fw-semibold">Aucune course ou coureur pour le moment</p>
+    <p class="small mb-3">Importez un fichier CSV ou Excel depuis la <a href="/">page d'accueil</a> pour commencer.</p>
   </div>
 </div>
 {% endif %}
@@ -140,7 +147,7 @@
   <div class="card">
     <div class="card-body text-center py-4 text-muted">
       <i class="bi bi-search" style="font-size:2rem;opacity:.2"></i>
-      <p class="mt-2 small mb-0">No runners match your search.</p>
+      <p class="mt-2 small mb-0">Aucun coureur ne correspond à votre recherche.</p>
     </div>
   </div>
 </div>
@@ -180,11 +187,11 @@ document.querySelectorAll('.checkin-toggle').forEach(toggle => {
       });
       const data = await res.json();
       if (data.ok) {
-        // Update status badge in the row
-        const statusCell = row?.querySelectorAll('td')[4];
+        // Update status badge in the row (now 6th column after adding Dossier column)
+        const statusCell = row?.querySelectorAll('td')[5];
         if (statusCell) {
           if (checkedIn) {
-            statusCell.innerHTML = '<span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Checked In</span>';
+            statusCell.innerHTML = '<span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Pointé</span>';
           } else {
             statusCell.innerHTML = '<span class="badge badge-absent">Absent</span>';
           }
@@ -211,11 +218,11 @@ document.querySelectorAll('.checkin-all-race-btn').forEach(btn => {
         document.querySelectorAll(`.checkin-toggle[data-race-id="${raceId}"]`).forEach(t => {
           t.checked = true;
         });
-        // Update all status badges in this race's table
+        // Update all status badges in this race's table (6th column after adding Dossier)
         document.querySelectorAll(`[data-race-id="${raceId}"]`).forEach(t => {
           const row = document.getElementById('runner-row-' + t.dataset.runnerId);
           if (row) {
-            const statusCell = row.querySelectorAll('td')[4];
+            const statusCell = row.querySelectorAll('td')[5];
             if (statusCell && !statusCell.querySelector('.badge-finished')) {
               statusCell.innerHTML = '<span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Checked In</span>';
             }
@@ -280,11 +287,11 @@ document.getElementById('globalCheckinAllBtn').addEventListener('click', async f
         const total  = document.getElementById('raceTotal-' + raceId);
         if (total) el.textContent = total.textContent;
       });
-      // Update all status badges that aren't "Finished"
+      // Update all status badges that aren't "Finished" (6th column after adding Dossier)
       document.querySelectorAll('.checkin-toggle').forEach(t => {
         const row = document.getElementById('runner-row-' + t.dataset.runnerId);
         if (row) {
-          const statusCell = row.querySelectorAll('td')[4];
+          const statusCell = row.querySelectorAll('td')[5];
           if (statusCell && !statusCell.querySelector('.badge-finished')) {
             statusCell.innerHTML = '<span class="badge badge-checked-in"><i class="bi bi-check me-1"></i>Checked In</span>';
           }

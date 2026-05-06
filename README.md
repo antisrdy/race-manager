@@ -2,6 +2,8 @@
 
 A lightweight web application for managing running races: import runners, track check-in, log finish times at a shared finish line, and display rankings by elapsed time.
 
+![CI](https://github.com/YOUR_USERNAME/race-manager/actions/workflows/ci.yml/badge.svg)
+
 ---
 
 ## Quick start (local development)
@@ -136,27 +138,74 @@ The **Ranking** page shows results per race, sorted by elapsed time. Filter by g
 
 ---
 
+## Testing
+
+The project includes a comprehensive test suite with 65 tests covering database operations, API endpoints, and utility functions.
+
+### Running tests
+
+```bash
+# Install test dependencies
+pip install -e ".[dev]"
+
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/test_database.py
+pytest tests/test_app.py
+pytest tests/test_utils.py
+
+# Run with coverage report
+pytest --cov=. --cov-report=html
+```
+
+### Test coverage
+
+- **Database tests** (test_database.py): Schema, constraints, migrations
+- **Application tests** (test_app.py): All endpoints, import, check-in, finish line, ranking
+- **Utility tests** (test_utils.py): Time calculations, data normalization, file parsing
+
+See [TESTING.md](TESTING.md) for detailed testing documentation and [TEST_SUMMARY.md](TEST_SUMMARY.md) for current test status.
+
+---
+
 ## File structure
 
 ```
 race-manager/
 ├── app.py                  # Flask application
 ├── database.py             # SQLite schema & initialisation
-├── requirements.txt
 ├── gunicorn.conf.py        # Gunicorn production settings
+├── pyproject.toml          # Project configuration
+├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .env.example            # Environment variable template
 ├── sample_runners.csv      # Example import file
+├── README.md
+├── TESTING.md              # Testing guide
+├── TEST_SUMMARY.md         # Test status summary
 ├── static/
 │   └── style.css
-└── templates/
-    ├── base.html           # Shared layout + navbar
-    ├── index.html          # Home — import + race list
-    ├── race.html           # Race detail — runner list
-    ├── checkin.html        # Centralised check-in
-    ├── finish_line.html    # Global finish logging
-    └── ranking.html        # Results by race + gender
+├── templates/
+│   ├── base.html           # Shared layout + navbar
+│   ├── index.html          # Home — import + race list
+│   ├── race.html           # Race detail — runner list
+│   ├── checkin.html        # Centralised check-in
+│   ├── finish_line.html    # Global finish logging
+│   └── ranking.html        # Results by race + gender
+└── tests/
+    ├── conftest.py         # Pytest fixtures
+    ├── test_app.py         # Application integration tests
+    ├── test_database.py    # Database tests
+    ├── test_utils.py       # Utility function tests
+    └── fixtures/
+        ├── test_data_english.csv   # Test data (English headers)
+        └── test_data_french.csv    # Test data (French headers)
 ```
 
 ---

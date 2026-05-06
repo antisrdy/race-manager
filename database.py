@@ -2,7 +2,7 @@ import os
 import sqlite3
 
 DATABASE      = os.environ.get('DATABASE', 'race_manager.db')
-SCHEMA_VERSION = 3   # increment when schema changes (triggers auto-migration)
+SCHEMA_VERSION = 4   # increment when schema changes (triggers auto-migration)
 
 
 def init_db():
@@ -30,13 +30,14 @@ def init_db():
 
         -- Bib numbers are globally unique across all races.
         CREATE TABLE IF NOT EXISTS runners (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            race_id    INTEGER NOT NULL,
-            bib_number INTEGER NOT NULL,
-            name       TEXT NOT NULL,
-            age        INTEGER,
-            gender     TEXT,
-            checked_in INTEGER NOT NULL DEFAULT 0,
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            race_id          INTEGER NOT NULL,
+            bib_number       INTEGER NOT NULL,
+            name             TEXT NOT NULL,
+            age              INTEGER,
+            gender           TEXT,
+            dossier_complete INTEGER NOT NULL DEFAULT 0,  -- 1 if all documents provided, 0 otherwise
+            checked_in       INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (race_id) REFERENCES races(id) ON DELETE CASCADE,
             UNIQUE (bib_number)
         );

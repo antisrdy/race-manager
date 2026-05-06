@@ -1,18 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}Race Manager{% endblock %}
+{% block title %}Gestion des Courses{% endblock %}
 
 {% block content %}
-
-<!-- Hero -->
-<div class="hero-section d-flex align-items-center justify-content-between flex-wrap gap-3">
-  <div>
-    <h1><i class="bi bi-flag-fill me-3"></i>Race Manager</h1>
-    <p>Import runners, set start times, and track arrivals — all in one place.</p>
-  </div>
-  <a href="/finish-line" class="btn btn-warning btn-lg fw-bold shadow px-4 py-3">
-    <i class="bi bi-flag-fill me-2"></i>Open Finish Line
-  </a>
-</div>
 
 <div class="row g-4">
 
@@ -25,25 +14,25 @@
             <i class="bi bi-file-earmark-spreadsheet text-primary" style="font-size:2rem"></i>
           </div>
           <div class="col">
-            <div class="fw-semibold">Import All Runners</div>
+            <div class="fw-semibold">Importer les Coureurs</div>
             <div class="text-muted small">
-              One file for all races. Required columns:
-              <code>bib_number</code>, <code>name</code>, <code>race</code>
-              &nbsp;·&nbsp; Optional: <code>age</code>, <code>gender</code>
-              &nbsp;·&nbsp; Races are created automatically if they don't exist.
+              Un fichier pour toutes les courses. Colonnes obligatoires :
+              <code>bib_number</code>, <code>name</code>, <code>race</code>, <code>dossier_complete</code>
+              &nbsp;·&nbsp; Optionnelles : <code>age</code>, <code>gender</code>
+              &nbsp;·&nbsp; Les courses sont créées automatiquement si elles n'existent pas.
             </div>
           </div>
           <div class="col-md-auto">
             <form method="post" action="/import" enctype="multipart/form-data"
                   class="d-flex align-items-center gap-2" id="globalImportForm">
               <label class="btn btn-outline-primary btn-sm mb-0" for="globalFileInput">
-                <i class="bi bi-folder2-open me-1"></i>Choose file
+                <i class="bi bi-folder2-open me-1"></i>Choisir un fichier
               </label>
               <input type="file" id="globalFileInput" name="file"
                      class="d-none" accept=".csv,.xlsx,.xls">
               <span id="globalFileName" class="text-muted small"></span>
               <button type="submit" class="btn btn-primary btn-sm" id="globalImportBtn" disabled>
-                <i class="bi bi-upload me-1"></i>Import
+                <i class="bi bi-upload me-1"></i>Importer
               </button>
             </form>
           </div>
@@ -56,7 +45,7 @@
   <div class="col-12">
     <div class="card">
       <div class="card-header d-flex align-items-center justify-content-between">
-        <span><i class="bi bi-list-ul text-primary me-2"></i>Races</span>
+        <span><i class="bi bi-list-ul text-primary me-2"></i>Courses</span>
         <span class="badge rounded-pill bg-secondary">{{ races | length }}</span>
       </div>
 
@@ -73,7 +62,7 @@
                 {{ race.start_time[8:10] }}
               </div>
               <div class="text-muted" style="font-size:.7rem; text-transform:uppercase; letter-spacing:.05em">
-                {% set months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] %}
+                {% set months = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'] %}
                 {{ months[race.start_time[5:7]|int - 1] }} {{ race.start_time[0:4] }}
               </div>
             </div>
@@ -93,12 +82,12 @@
                   {% if race.start_time %}
                   <i class="bi bi-clock me-1"></i>
                   <span class="start-time-display" onclick="openStartTimeEdit({{ race.id }})"
-                        title="Click to edit start time">{{ race.start_time[11:16] }}</span>
+                        title="Cliquer pour modifier l'heure de départ">{{ race.start_time[11:16] }}</span>
                   <span class="elapsed-counter"></span>
                   {% else %}
                   <button class="btn btn-sm btn-outline-primary py-0 px-2"
                           onclick="openStartTimeEdit({{ race.id }})">
-                    <i class="bi bi-clock-history me-1"></i>Set start time
+                    <i class="bi bi-clock-history me-1"></i>Définir l'heure de départ
                   </button>
                   {% endif %}
                 </span>
@@ -119,18 +108,18 @@
                   </form>
                 </span>
                 &nbsp;·&nbsp;
-                <span><i class="bi bi-person-fill me-1"></i>{{ race.runner_count }} runner{{ 's' if race.runner_count != 1 else '' }}</span>
+                <span><i class="bi bi-person-fill me-1"></i>{{ race.runner_count }} coureur{{ 's' if race.runner_count != 1 else '' }}</span>
               </div>
             </div>
 
             <!-- Actions -->
             <div class="d-flex gap-2 flex-shrink-0">
               <a href="/races/{{ race.id }}" class="btn btn-outline-primary btn-sm px-3">
-                <i class="bi bi-people me-1"></i>Runners
+                <i class="bi bi-people me-1"></i>Coureurs
               </a>
               <form method="post" action="/races/{{ race.id }}/delete"
-                    onsubmit="return confirm('Delete « {{ race.name }} »? All data will be lost.')">
-                <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete race">
+                    onsubmit="return confirm('Supprimer « {{ race.name }} » ? Toutes les données seront perdues.')">
+                <button type="submit" class="btn btn-outline-danger btn-sm" title="Supprimer la course">
                   <i class="bi bi-trash"></i>
                 </button>
               </form>
@@ -144,8 +133,8 @@
       {% else %}
       <div class="card-body text-center py-5 text-muted">
         <i class="bi bi-flag" style="font-size:3rem; opacity:.2"></i>
-        <p class="mt-3 mb-1 fw-semibold">No races yet</p>
-        <p class="small mb-0">Import a CSV or Excel file above — races are created automatically from the <code>race</code> column.</p>
+        <p class="mt-3 mb-1 fw-semibold">Aucune course pour le moment</p>
+        <p class="small mb-0">Importez un fichier CSV ou Excel ci-dessus — les courses sont créées automatiquement depuis la colonne <code>race</code>.</p>
       </div>
       {% endif %}
 
