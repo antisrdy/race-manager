@@ -8,8 +8,28 @@ A lightweight web application for managing running races: import runners, track 
 
 **Requirements:** Python 3.10+
 
+### 1. Create and activate a virtual environment
+
 ```bash
-pip install -r requirements.txt
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it (macOS/Linux)
+source venv/bin/activate
+
+# Activate it (Windows)
+# venv\Scripts\activate
+```
+
+### 2. Install dependencies
+
+```bash
+pip install -e .
+```
+
+### 3. Run the application
+
+```bash
 python app.py
 ```
 
@@ -18,6 +38,8 @@ Open **http://localhost:5000** in your browser.
 The SQLite database (`race_manager.db`) is created automatically on first run.
 
 > **Reset all data:** stop the server, delete `race_manager.db`, and restart.
+>
+> **Deactivate virtual environment:** run `deactivate` when you're done.
 
 ---
 

@@ -11,8 +11,8 @@ RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app
 
 # Install dependencies as a cached layer
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml .
+RUN pip install --no-cache-dir .
 
 # Copy application code
 COPY --chown=appuser:appuser . .
