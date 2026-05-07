@@ -6,6 +6,12 @@ from datetime import datetime
 import pytest
 
 
+def create_csv_upload(csv_content):
+    """Helper to create a proper file upload for CSV content."""
+    csv_bytes = csv_content.encode('utf-8')
+    return (io.BytesIO(csv_bytes), 'runners.csv', 'text/csv')
+
+
 class TestHealthCheck:
     """Tests for the health check endpoint."""
     
@@ -97,9 +103,8 @@ class TestRunnerImport:
             'dossier_complete': '1'
         })
         
-        csv_data.seek(0)
         data = {
-            'file': (io.BytesIO(csv_data.getvalue().encode()), 'runners.csv')
+            'file': create_csv_upload(csv_data.getvalue())
         }
         
         response = client.post(
@@ -128,9 +133,8 @@ class TestRunnerImport:
             'DOSSIER': 'COMPLET'
         })
         
-        csv_data.seek(0)
         data = {
-            'file': (io.BytesIO(csv_data.getvalue().encode()), 'runners.csv')
+            'file': create_csv_upload(csv_data.getvalue())
         }
         
         response = client.post(
@@ -160,9 +164,8 @@ class TestRunnerImport:
         writer.writeheader()
         writer.writerow({'bib_number': '30', 'name': 'Test'})
         
-        csv_data.seek(0)
         data = {
-            'file': (io.BytesIO(csv_data.getvalue().encode()), 'runners.csv')
+            'file': create_csv_upload(csv_data.getvalue())
         }
         
         response = client.post(
@@ -181,9 +184,8 @@ class TestRunnerImport:
         writer.writeheader()
         writer.writerow({'bib_number': '40', 'name': 'Test Runner', 'race': 'Test Race'})
         
-        csv_data.seek(0)
         data = {
-            'file': (io.BytesIO(csv_data.getvalue().encode()), 'runners.csv')
+            'file': create_csv_upload(csv_data.getvalue())
         }
         
         response = client.post(
@@ -211,9 +213,8 @@ class TestRunnerImport:
             'dossier_complete': '1'
         })
         
-        csv_data.seek(0)
         data = {
-            'file': (io.BytesIO(csv_data.getvalue().encode()), 'runners.csv')
+            'file': create_csv_upload(csv_data.getvalue())
         }
         
         response = client.post(
@@ -243,9 +244,8 @@ class TestRunnerImport:
             'dossier_complete': '1'
         })
         
-        csv_data.seek(0)
         data = {
-            'file': (io.BytesIO(csv_data.getvalue().encode()), 'runners.csv')
+            'file': create_csv_upload(csv_data.getvalue())
         }
         
         response = client.post(
