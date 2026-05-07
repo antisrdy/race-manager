@@ -2,13 +2,13 @@
 
 A lightweight web application for managing running races: import runners, track check-in, log finish times at a shared finish line, and display rankings by elapsed time.
 
-![CI](https://github.com/YOUR_USERNAME/race-manager/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/antisrdy/race-manager/actions/workflows/ci.yml/badge.svg)
 
 ---
 
 ## Quick start (local development)
 
-**Requirements:** Python 3.10+
+**Requirements:** Python 3.11+
 
 ### 1. Create and activate a virtual environment
 

@@ -139,10 +139,10 @@ The workflow is defined in `.github/workflows/ci.yml` and:
 
 ### Status Badge
 
-Add this badge to your README.md to show CI status:
+The CI status badge is shown at the top of the README:
 
 ```markdown
-![CI](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/antisrdy/race-manager/actions/workflows/ci.yml/badge.svg)
 ```
 
 ### Local Testing Before Push
